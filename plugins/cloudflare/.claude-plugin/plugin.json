@@ -1,0 +1,9 @@
+{
+  "name": "cloudflare",
+  "description": "Cloudflare Workers, Durable Objects, Wrangler and friends, pinned to one upstream commit.",
+  "version": "0.1.139",
+  "author": {
+    "name": "META DREAMER",
+    "url": "https://github.com/META-DREAMER"
+  }
+}

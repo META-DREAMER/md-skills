@@ -1,0 +1,9 @@
+{
+  "name": "review",
+  "description": "Code review workflows — CodeRabbit, multi-model review, and TDD.",
+  "version": "0.1.139",
+  "author": {
+    "name": "META DREAMER",
+    "url": "https://github.com/META-DREAMER"
+  }
+}

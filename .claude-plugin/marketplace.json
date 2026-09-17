@@ -1,0 +1,37 @@
+{
+  "name": "md-skills",
+  "owner": {
+    "name": "META DREAMER",
+    "url": "https://github.com/META-DREAMER"
+  },
+  "plugins": [
+    {
+      "name": "design-eng",
+      "source": "./plugins/design-eng",
+      "description": "UI polish, motion and component design — Emil Kowalski's skills plus our own design-engineering set.",
+      "version": "0.1.139",
+      "category": "Design"
+    },
+    {
+      "name": "cloudflare",
+      "source": "./plugins/cloudflare",
+      "description": "Cloudflare Workers, Durable Objects, Wrangler and friends, pinned to one upstream commit.",
+      "version": "0.1.139",
+      "category": "Backend"
+    },
+    {
+      "name": "ralph",
+      "source": "./plugins/ralph",
+      "description": "The Ralph sprint loop — plan, build, polish, review sprint stories autonomously.",
+      "version": "0.1.139",
+      "category": "Workflow"
+    },
+    {
+      "name": "review",
+      "source": "./plugins/review",
+      "description": "Code review workflows — CodeRabbit, multi-model review, and TDD.",
+      "version": "0.1.139",
+      "category": "Workflow"
+    }
+  ]
+}
