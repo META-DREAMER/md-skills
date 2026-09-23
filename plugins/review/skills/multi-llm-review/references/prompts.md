@@ -2,7 +2,7 @@
 
 Both models get the **same core rubric and the same bar** — the overlap is deliberate: independent convergence on a defect is the highest-signal outcome this skill produces. What differs is emphasis. Codex verifies against the repo; Gemini judges design and gaps from the dossier.
 
-Splice the shared blocks into each template at the `{{…}}` markers. Fill `{{TARGET}}` (the plan document or branch under review), `{{PLAN_FILE}}`, `{{REQUIREMENTS_FILE}}`, `{{DOSSIER_FILES}}`, `{{GLOSSARY}}`, `{{ADR_LOG}}`, `{{DIFF_PATH}}`, `{{BASE}}`, and `{{SETTLED_DECISIONS}}` (the recorded decision list plus the relevant architecture-decision rows) from the dossier and the repo config.
+Splice the shared blocks into each template at the `{{…}}` markers. Fill `{{TARGET}}` (the plan document or branch under review), `{{PLAN_FILE}}`, `{{REQUIREMENTS_FILE}}`, `{{DOSSIER_FILES}}`, `{{GLOSSARY}}`, `{{ADR_LOG}}`, `{{DIFF_PATH}}`, `{{BASE}}`, and `{{SETTLED_DECISIONS}}` (the recorded decision list plus the relevant architecture-decision rows) from the dossier and the repo facts.
 
 ## Shared blocks
 

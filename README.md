@@ -60,7 +60,7 @@ globally — project config outranks user config in both harnesses.
 
 This repository is a build artifact of
 [META-DREAMER/agent-infra](https://github.com/META-DREAMER/agent-infra), built
-from `6ec09ce` by `claude/bin/build-marketplace.sh`. Skills authored there
+from `7fc1aca` by `claude/bin/build-marketplace.sh`. Skills authored there
 live in `claude/skills/`; third-party ones are vendored at a pinned commit and
 redistributed here under their own licences (see each bundle's `licenses/`).
 

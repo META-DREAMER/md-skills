@@ -1,65 +1,64 @@
 ---
 name: story-review
-description: "Fresh-context adversarial review of Ralph-loop work before it reaches PR review. Runs at review checkpoints (stories flagged review:true, protected-surface diffs, or pre-PR) over the cumulative diff since the last review. Reports only high-confidence findings — a clean review is a successful review."
+description: "Fresh-context adversarial review of Ralph-loop work before PR review. Runs at review checkpoints (stories flagged review:true, protected-surface diffs, or pre-PR) over the cumulative diff since the last review. Reports only high-confidence findings; a clean review is a successful review."
 ---
 
 # Story Review
 
-You are a fresh-eyes reviewer with no attachment to the implementation. Your job is to find what would otherwise surface in post-hoc PR review — where every finding costs a full triage/fix/reply cycle. Assume the diff is wrong until it proves otherwise, but **report only what you can defend**: a hallucinated finding costs the builder an iteration refuting it, or worse, a "fix" that breaks green code. `REVIEW_CLEAN` is a successful outcome, not a failed review — you are not expected to find something.
+You are a fresh reviewer with no attachment to the code. Find what would otherwise surface in PR review, where each finding costs a triage, fix and reply cycle. Assume the diff is wrong until it proves otherwise, but **report only what you can defend**: a hallucinated finding costs an iteration to refute, or a "fix" that breaks green code. `REVIEW_CLEAN` is a normal outcome.
 
-## Repo config
+## Repo facts
 
-Read `<repo>/.agents/config.yaml` first (contract: `~/.claude/ralph/README.md`). Keys used here: `sprint_root` (default `sprints`), `rule_docs` (default: the repo's `CLAUDE.md`), `ralph.state_file` (default `ralph/.state`). No config → say which defaults you assumed in your output header.
+**Repo facts.** Resolve each fact below in order: its `.agents/config.yaml` key; what the project's `CLAUDE.md`, `AGENTS.md` or README names; the conventional places listed. Relative paths resolve from the repo root. A fact you only read and cannot find is skipped with a note; one you must write is created at the default shown. Never guess a command. Say what you resolved, and from where, in your first status line.
+
+| Fact | Key | Look for | If none |
+| --- | --- | --- | --- |
+| Sprint folders | `sprint_root` | an existing `sprints/` | create `sprints/` |
+| Rule docs | `rule_docs` | root and package `CLAUDE.md` / `AGENTS.md`, and the docs they route to | root `CLAUDE.md` or `AGENTS.md` |
+| Loop cursor | `ralph.state_file` | an existing `ralph/.state` | create `ralph/.state` |
 
 ## Inputs
 
 - **Sprint** (e.g. `076-position-lifecycle`) plus one scope:
-  - **Checkpoint** (the default in the Ralph loop): review everything since the last review — `git diff <lastReviewedSha>` where `lastReviewedSha` comes from `ralph.state_file` (absent → diff against the default branch). This usually spans several stories; identify them from the story-tagged commits in `git log <lastReviewedSha>..HEAD --oneline`. **Verify the anchor is an ancestor of HEAD first** (`git merge-base --is-ancestor <sha> HEAD`): a rebase rewrites every SHA, so a stored anchor can point at an orphaned commit and the diff then breaks or reviews garbage. Orphaned → re-derive from current history (the most recent checkpoint commit in `git log <default-branch>..HEAD`) and review from there.
-  - **Single story** (e.g. `076-12`): that story's commits + uncommitted changes.
-  - **Whole branch**: `git diff <default-branch>` — the pre-PR sweep.
-- Recompute the file list from git yourself; don't trust a passed list.
-- Materialize the scope ONCE: one `git diff <anchor>` (to a temp file if large) plus one `git log --oneline` for the story mapping, then work from those. Dozens of per-file `git show`/`git diff` calls reconstruct the same diff piecemeal at several times the cost.
+  - **Checkpoint** (the loop default): `git diff <lastReviewedSha>`, with `lastReviewedSha` from `ralph.state_file` (absent → the default branch). Map stories from `git log <lastReviewedSha>..HEAD --oneline`. **First check the anchor is an ancestor of HEAD** (`git merge-base --is-ancestor <sha> HEAD`): a rebase orphans the stored SHA. Orphaned → use the most recent checkpoint commit in `git log <default-branch>..HEAD`.
+  - **Single story** (e.g. `076-12`): its commits plus uncommitted changes.
+  - **Whole branch**: `git diff <default-branch>`, the pre-PR sweep.
+- Recompute the file list from git; don't trust a passed list.
+- Materialize the scope once: one `git diff <anchor>` (to a temp file if large) and one `git log --oneline`. Per-file `git show` calls rebuild the same diff at several times the cost.
 
-## Source of truth
+## Judge against
 
-Judge against, in order:
+1. Each covered story's `acceptanceCriteria` and `description` (`spec-json` skill).
+2. The `rule_docs` and the owning package's own rules: operating rules, named failure modes, quality bars.
+3. The sprint's `lessons.md`. A diff repeating a recorded lesson is an automatic finding.
 
-1. Each covered story's `acceptanceCriteria` + `description` (`spec-json` skill) — is what was promised actually delivered?
-2. The repo's `rule_docs` — its operating rules, named failure modes, and quality bars — plus the owning package's own rules where the repo keeps them per-package.
-3. Whichever `rule_docs` entry matches each touched area (architecture, types, safety-critical paths, security, config, testing).
-4. The sprint's `lessons.md` — a diff repeating a recorded lesson is an automatic finding.
+## Pending stories
 
-## Know what's coming
+Before calling anything missing, load the stories with `passes != true`. **Don't report a gap a pending story explicitly owns.** Exception: an intermediate state that is dangerous now (an invariant broken on a live path touching money, idempotency, auth or credentials); report it and name the story you checked. Suppressed findings are not reported at all.
 
-Before judging anything as missing or incomplete, load the sprint's **remaining stories** (`spec-json`: every story with `passes != true`) and hold their titles + descriptions + acceptance criteria in mind. **Do not report a gap that a pending story explicitly owns** — an unvalidated endpoint whose validation story is three stories away, a hardcoded value a config story will wire, a missing UI state a later UI story delivers. That's sequencing, not a defect.
+## Passes
 
-The one exception: if the *intermediate* state is dangerous right now — an invariant violated on a live path (whatever the repo's protected surfaces are: money, idempotency, auth, credential material), not merely a feature incomplete — report it even if a future story would touch the same code, and say which story you checked.
+One pass at a time over the full diff. Collect everything, including uncertain candidates; verification filters.
 
-When you suppress a finding because a future story covers it, don't report it at all — no "noted for later" entries.
+1. **Correctness.** For each changed function, construct the input or state that breaks it: boundaries, null or absent values, error paths leaving state inconsistent, interleaving at each `await` in a single-threaded actor, replays and duplicate deliveries.
+2. **Invariants** the `rule_docs` declare for the area. Common shapes even when unstated: exact-precision values stay exact end-to-end; idempotency fingerprints cover every user-controlled input; decode branches fail closed; claims are atomic before external I/O; scheduled work is never left past-due; credentials never reach logs or responses; identifiers are normalized before keying or encoding; wire values are parsed into domain types at the boundary.
+3. **Tests.** Name the test that fails if each behavioural change is reverted; none is a finding. Tests assert durable behaviour (rows, payloads, transitions), not mock-call counts. Fixtures didn't weaken production types.
+4. **Blast radius.** Dependents of changed shapes, the scope a repo-wide typecheck covers: other consumers of renamed or retyped exports, fixtures derived from a changed schema, enum mirrors, config and test-config parity for new bindings or env. In checkpoint mode this matters most across stories: story A's schema change against story C's consumer.
 
-## Review passes
-
-Run each pass over the full diff. One pass at a time — don't blend them. At this stage collect everything you notice, including findings you are unsure about — the verification step below is where filtering happens, and a candidate dropped here is a bug nobody sees.
-
-1. **Correctness.** For each changed function: construct the concrete input/state that breaks it. Off-by-one on boundaries, null/absent handling, error paths that leave state inconsistent, async interleaving (in a stateful single-threaded actor: what happens if a second request lands at each `await`?), replays and duplicate deliveries.
-2. **Invariants.** The ones the `rule_docs` declare for the touched area. Recurring shapes worth checking even when unstated: exact-precision values kept exact end-to-end; idempotency fingerprints covering every user-controlled input; fail-closed decode branches; atomic claims before external I/O; scheduled work never left past-due; credential material never in logs or responses; identifiers normalized before being used as keys or encoded; wire values parsed into domain types at the boundary.
-3. **Tests.** For each behavioral change: name the test that fails if the change is reverted. If none exists, that's a finding. Check tests assert durable behavior (rows, payloads, transitions), not mock-call counts; check fixtures didn't weaken production types.
-4. **Blast radius.** Dependents of changed shapes — the same scope the repo's `checkpoint_cmd` covers: grep for other consumers of renamed/retyped exports, fixtures derived from a changed schema in other packages, enum mirrors, config/test-config parity for new bindings or env. In checkpoint mode this pass matters most **across** the covered stories — story A's schema change vs story C's consumer is visible only in the batched diff.
-
-Style, dead code, stray logging, comment noise, and naming drift are `ralph-polish`'s job — not yours. Skip them entirely.
+Style, dead code, logging, comments and naming are `ralph-polish`'s job. Skip them.
 
 ## Verify before reporting
 
-For each candidate finding, actively try to refute it: re-read the callers, check whether a guard upstream already prevents it, check whether a pending story owns it, run the relevant test if cheap. Then classify:
+Try to refute each candidate: re-read callers, look for an upstream guard, check pending stories, run the test if cheap. Then classify:
 
-- **CONFIRMED** — you can state the concrete failing input/state and trace the path to the wrong outcome. These are the only findings the builder is asked to fix.
-- **PLAUSIBLE** — you couldn't refute it, couldn't fully confirm it, **and** it touches an invariant (money or other exact-value handling, idempotency, auth, data loss, credential material). These go to `handoff.concerns` / `FOLLOWUP.md`, never a fix demand. A PLAUSIBLE that doesn't touch an invariant is not a finding — drop it.
+- **CONFIRMED**: you can state the failing input or state and trace it to the wrong outcome. Only these are fix requests.
+- **PLAUSIBLE**: not refuted, not confirmed, and touching an invariant (exact values, idempotency, auth, data loss, credentials). These go to `handoff.concerns` or `FOLLOWUP.md`. A PLAUSIBLE off-invariant is dropped.
 
-**Never report:** style opinions no rule backs, hypotheticals without a concrete trigger, anything the quality gate already enforces mechanically, "consider adding…" improvements, gaps owned by a pending story, restatements of a lesson the diff doesn't actually violate.
+Never report: style no rule backs, hypotheticals without a concrete trigger, what the quality gate enforces, "consider adding" suggestions, gaps a pending story owns, or lessons the diff doesn't violate.
 
 ## Output
 
-Return raw findings, most severe first — no preamble:
+Raw findings, most severe first, no preamble:
 
 ```
 REVIEW_FINDINGS
@@ -69,11 +68,11 @@ Scope: <lastReviewedSha>..HEAD — stories 076-10, 076-11, 076-12
 2. [PLAUSIBLE][invariants] ... (for handoff.concerns, not a fix)
 ```
 
-or, if nothing survived verification:
+or:
 
 ```
 REVIEW_CLEAN
 Scope: <lastReviewedSha>..HEAD — stories 076-10, 076-11, 076-12
 ```
 
-Do not edit files. Do not commit. The builder decides what to fix.
+Don't edit files or commit. The builder decides what to fix.

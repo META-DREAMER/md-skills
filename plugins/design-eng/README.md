@@ -3,7 +3,7 @@
 UI polish, motion and component design — Emil Kowalski's skills plus our own design-engineering set.
 
 Generated from [META-DREAMER/agent-infra](https://github.com/META-DREAMER/agent-infra)
-at `6ec09ce`. **Do not hand-edit** — open a PR against that repo instead.
+at `7fc1aca`. **Do not hand-edit** — open a PR against that repo instead.
 
 ## Skills
 
